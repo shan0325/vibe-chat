@@ -5,6 +5,7 @@ import com.shan.chat.application.lobby.port.out.BroadcastLobbyPort;
 import com.shan.chat.application.member.dto.MemberInfo;
 import com.shan.chat.application.member.port.in.ConnectMemberUseCase;
 import com.shan.chat.application.member.port.in.DisconnectMemberUseCase;
+import com.shan.chat.application.member.port.in.GetOnlineMembersUseCase;
 import com.shan.chat.application.member.port.out.LoadMemberPort;
 import com.shan.chat.application.member.port.out.ManageOnlineSessionPort;
 import com.shan.chat.common.exception.ChatException;
@@ -13,11 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PresenceService implements ConnectMemberUseCase, DisconnectMemberUseCase {
+public class PresenceService implements ConnectMemberUseCase, DisconnectMemberUseCase, GetOnlineMembersUseCase {
 
     private final ManageOnlineSessionPort manageOnlineSessionPort;
     private final BroadcastLobbyPort broadcastLobbyPort;
@@ -51,6 +53,11 @@ public class PresenceService implements ConnectMemberUseCase, DisconnectMemberUs
         });
     }
 
+    @Override
+    public List<MemberInfo> getOnlineMembers() {
+        return manageOnlineSessionPort.getAllOnlineMembers();
+    }
+
     private LobbyMessageDto systemMsg(String content) {
         return LobbyMessageDto.builder()
                 .content(content)
@@ -64,4 +71,3 @@ public class PresenceService implements ConnectMemberUseCase, DisconnectMemberUs
         return String.format("%02d:%02d", now.getHour(), now.getMinute());
     }
 }
-

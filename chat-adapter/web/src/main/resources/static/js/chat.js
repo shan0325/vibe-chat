@@ -52,6 +52,9 @@ function connectStomp() {
 function onStompConnected() {
     $('#connection-badge').removeClass('bg-secondary').addClass('bg-success').text('● 연결됨');
 
+    // 이전 채팅 내역 불러오기
+    loadLobbyHistory();
+
     // 로비 메시지 구독
     stompClient.subscribe('/topic/lobby', function (frame) {
         appendLobbyMessage(JSON.parse(frame.body));
@@ -60,6 +63,29 @@ function onStompConnected() {
     // 접속자 목록 구독
     stompClient.subscribe('/topic/presence', function (frame) {
         renderOnlineMembers(JSON.parse(frame.body));
+    });
+
+    // 구독 완료 후 현재 온라인 목록을 REST로 즉시 요청
+    // (서버의 broadcastPresence는 구독 전에 전송될 수 있으므로 직접 조회)
+    loadOnlineMembers();
+}
+
+function loadLobbyHistory() {
+    $.get('/api/lobby/history', { limit: 50 }, function (messages) {
+        if (!messages || messages.length === 0) return;
+        const $list = $('#message-list');
+        $list.prepend('<div class="d-flex justify-content-center my-2">' +
+            '<span class="badge bg-secondary">— 이전 대화 내역 —</span></div>');
+        messages.forEach(function (msg) {
+            appendLobbyMessage(msg);
+        });
+        scrollToBottom($list[0]);
+    });
+}
+
+function loadOnlineMembers() {
+    $.get('/api/members/online', function (members) {
+        renderOnlineMembers(members);
     });
 }
 
@@ -100,11 +126,13 @@ function appendLobbyMessage(msg) {
         if (isMe) {
             html = `<div class="message-item mine">
                         <span class="message-time align-self-end me-1">${esc(msg.sentAt)}</span>
-                        <div class="message-bubble mine">${esc(msg.content)}</div>
+                        <div class="message-content">
+                            <div class="message-bubble mine">${esc(msg.content)}</div>
+                        </div>
                     </div>`;
         } else {
             html = `<div class="message-item">
-                        <div>
+                        <div class="message-content">
                             <div class="message-sender">${esc(msg.senderNickname)}</div>
                             <div class="message-bubble other">${esc(msg.content)}</div>
                         </div>
