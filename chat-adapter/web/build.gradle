@@ -1,0 +1,10 @@
+// 인바운드 웹 어댑터: MVC Controller, Thymeleaf View
+dependencies {
+    implementation project(':chat-common')
+    implementation project(':chat-domain')
+    implementation project(':chat-application')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+}
+

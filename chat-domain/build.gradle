@@ -1,0 +1,6 @@
+// 핵심 도메인 모델, 도메인 규칙
+// 프레임워크에 의존하지 않는 순수 Java 모듈
+dependencies {
+    implementation project(':chat-common')
+}
+

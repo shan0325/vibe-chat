@@ -1,0 +1,12 @@
+rootProject.name = 'chat'
+
+include(
+        'chat-common',
+        'chat-domain',
+        'chat-application',
+        'chat-adapter:web',
+        'chat-adapter:websocket',
+        'chat-adapter:persistence',
+        'chat-bootstrap'
+)
+

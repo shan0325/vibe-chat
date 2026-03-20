@@ -1,0 +1,29 @@
+// 아웃바운드 영속성 어댑터: JPA, Querydsl, H2
+def querydslVersion = '5.1.0'
+
+dependencies {
+    implementation project(':chat-common')
+    implementation project(':chat-domain')
+    implementation project(':chat-application')
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'com.h2database:h2'
+
+    // Querydsl
+    implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
+    annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+}
+
+// Querydsl QClass 생성 경로 설정
+def querydslDir = layout.buildDirectory.dir('generated/querydsl').get().asFile
+
+sourceSets {
+    main.java.srcDirs += [querydslDir]
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.generatedSourceOutputDirectory.set(file(querydslDir))
+}
+

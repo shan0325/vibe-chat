@@ -1,0 +1,14 @@
+// 실행 모듈: 모든 어댑터를 조립하고 Spring Boot 애플리케이션을 기동한다
+apply plugin: 'org.springframework.boot'
+
+dependencies {
+    implementation project(':chat-common')
+    implementation project(':chat-domain')
+    implementation project(':chat-application')
+    implementation project(':chat-adapter:web')
+    implementation project(':chat-adapter:websocket')
+    implementation project(':chat-adapter:persistence')
+
+    implementation 'org.springframework.boot:spring-boot-starter'
+}
+

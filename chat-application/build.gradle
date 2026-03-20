@@ -1,0 +1,7 @@
+// 유스케이스, 포트(in/out), 트랜잭션 경계
+// 도메인을 조합해 비즈니스 흐름을 구성한다
+dependencies {
+    implementation project(':chat-common')
+    implementation project(':chat-domain')
+}
+

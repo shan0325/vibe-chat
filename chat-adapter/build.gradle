@@ -1,0 +1,3 @@
+// chat-adapter 하위 모듈(web, websocket, persistence)을 묶는 상위 모듈
+// 이 모듈 자체는 컴파일 대상이 없다
+

@@ -1,0 +1,9 @@
+// 인바운드 WebSocket 어댑터: STOMP Controller, 세션 처리
+dependencies {
+    implementation project(':chat-common')
+    implementation project(':chat-domain')
+    implementation project(':chat-application')
+
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+}
+
