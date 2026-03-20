@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class RoomMessageService implements SendRoomMessageUseCase, GetRoomHistoryUseCase {
 
@@ -55,7 +56,6 @@ public class RoomMessageService implements SendRoomMessageUseCase, GetRoomHistor
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<RoomMessageDto> getRecentHistory(String roomId, int limit) {
         return loadRoomHistoryPort.loadRecent(roomId, limit);
     }

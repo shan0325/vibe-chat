@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class RoomService implements
         CreateRoomUseCase,
@@ -119,7 +120,6 @@ public class RoomService implements
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<RoomDto> getRoomList() {
         return loadRoomPort.loadAllActive().stream()
                 .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(room.getRoomId())))
@@ -127,27 +127,23 @@ public class RoomService implements
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Optional<RoomDto> getRoomById(String roomId) {
         return loadRoomPort.loadById(roomId)
                 .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(roomId)));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<MemberInfo> getParticipants(String roomId) {
         return loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(roomId);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public void syncParticipants(String roomId) {
         List<MemberInfo> participants = loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(roomId);
         broadcastRoomPort.broadcastRoomParticipants(roomId, participants);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public void syncRoomList() {
         List<RoomDto> rooms = loadRoomPort.loadAllActive().stream()
                 .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(room.getRoomId())))
@@ -199,4 +195,3 @@ public class RoomService implements
                 .build();
     }
 }
-

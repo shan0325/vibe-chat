@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class LobbyService implements SendLobbyMessageUseCase, GetLobbyHistoryUseCase {
 
@@ -55,7 +56,6 @@ public class LobbyService implements SendLobbyMessageUseCase, GetLobbyHistoryUse
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<LobbyMessageDto> getRecentHistory(int limit) {
         return loadLobbyHistoryPort.loadRecent(limit);
     }

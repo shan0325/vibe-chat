@@ -17,7 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@Transactional
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class MemberService implements CreateMemberUseCase, ChangeNicknameUseCase, FindMemberUseCase {
 
@@ -25,6 +25,7 @@ public class MemberService implements CreateMemberUseCase, ChangeNicknameUseCase
     private final SaveMemberPort saveMemberPort;
 
     @Override
+    @Transactional
     public MemberInfo create() {
         String memberId = UUID.randomUUID().toString();
         MemberProfile member = MemberProfile.create(memberId, NicknameGenerator.generate());
@@ -33,6 +34,7 @@ public class MemberService implements CreateMemberUseCase, ChangeNicknameUseCase
     }
 
     @Override
+    @Transactional
     public MemberInfo change(String memberId, String newNickname) {
         MemberProfile member = loadMemberPort.loadByMemberId(memberId)
                 .orElseThrow(() -> new ChatException("사용자를 찾을 수 없습니다: " + memberId));
@@ -42,7 +44,6 @@ public class MemberService implements CreateMemberUseCase, ChangeNicknameUseCase
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Optional<MemberInfo> findByMemberId(String memberId) {
         return loadMemberPort.loadByMemberId(memberId).map(this::toDto);
     }
