@@ -16,11 +16,6 @@ $(document).ready(function () {
     });
 
     $('#leave-btn').on('click', leaveRoom);
-
-    // 탭 닫기 / 브라우저 닫기 시 sendBeacon으로 안정적 퇴장 처리
-    window.addEventListener('beforeunload', function () {
-        navigator.sendBeacon('/api/rooms/' + ROOM_ID + '/leave');
-    });
 });
 
 // ──────────────────────────────────────────────────────────
@@ -102,8 +97,6 @@ function sendRoomMessage() {
 function leaveRoom() {
     if (!confirm('방을 나가시겠습니까?')) return;
 
-    // beforeunload 중복 호출 방지
-    window.removeEventListener('beforeunload', arguments.callee);
 
     $.ajax({
         url: '/api/rooms/' + ROOM_ID + '/leave',
