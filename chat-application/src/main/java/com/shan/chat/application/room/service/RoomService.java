@@ -30,7 +30,8 @@ public class RoomService implements
         JoinRoomUseCase,
         LeaveRoomUseCase,
         LeaveAllRoomsUseCase,
-        GetRoomParticipantsUseCase {
+        GetRoomParticipantsUseCase,
+        SyncRoomPresenceUseCase {
 
     private final LoadRoomPort loadRoomPort;
     private final SaveRoomPort saveRoomPort;
@@ -72,22 +73,22 @@ public class RoomService implements
 
         if (!room.isActive()) throw new ChatException("비활성화된 방입니다: " + roomId);
 
-        // 이미 참여 중이면 무시
-        if (loadRoomParticipantPort.existsByRoomIdAndMemberId(roomId, memberId)) return;
+        boolean isNew = !loadRoomParticipantPort.existsByRoomIdAndMemberId(roomId, memberId);
 
-        saveRoomParticipantPort.save(RoomParticipant.join(roomId, memberId));
+        if (isNew) {
+            saveRoomParticipantPort.save(RoomParticipant.join(roomId, memberId));
+            String nickname = getNickname(memberId);
+            saveRoomMessagePort.save(systemRoomMsg(roomId, nickname + "님이 입장했습니다."));
+            broadcastRoomPort.broadcastRoomMessage(roomId, systemRoomMessageDto(roomId, nickname + "님이 입장했습니다."));
+            broadcastRoomList();
+        }
 
-        String nickname = getNickname(memberId);
-        saveRoomMessagePort.save(systemRoomMsg(roomId, nickname + "님이 입장했습니다."));
-
+        // 이미 참여 중이어도 항상 참여자 목록을 브로드캐스트한다.
+        // (페이지 새로고침, 재접속 등 다양한 케이스 대응)
         List<MemberInfo> participants = loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(roomId);
-        RoomMessageDto sysMsg = systemRoomMessageDto(roomId, nickname + "님이 입장했습니다.");
-
-        broadcastRoomPort.broadcastRoomMessage(roomId, sysMsg);
         broadcastRoomPort.broadcastRoomParticipants(roomId, participants);
-        broadcastRoomList();
 
-        log.info("[방 입장] roomId={}, memberId={}", roomId, memberId);
+        log.info("[방 입장] roomId={}, memberId={}, isNew={}", roomId, memberId, isNew);
     }
 
     @Override
@@ -136,6 +137,22 @@ public class RoomService implements
     @Transactional(readOnly = true)
     public List<MemberInfo> getParticipants(String roomId) {
         return loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(roomId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void syncParticipants(String roomId) {
+        List<MemberInfo> participants = loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(roomId);
+        broadcastRoomPort.broadcastRoomParticipants(roomId, participants);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void syncRoomList() {
+        List<RoomDto> rooms = loadRoomPort.loadAllActive().stream()
+                .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(room.getRoomId())))
+                .collect(Collectors.toList());
+        broadcastRoomPort.broadcastRoomList(rooms);
     }
 
     // ──────────────────────────────────────────────────────────

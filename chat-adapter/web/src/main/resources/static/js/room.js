@@ -1,8 +1,5 @@
 /**
  * room.js — 방 채팅 클라이언트 스크립트
- *
- * room.html 에서 MY_MEMBER_ID, MY_NICKNAME, ROOM_ID, ROOM_NAME 전역 변수를 주입한 뒤
- * 이 파일을 로드해야 한다.
  */
 
 let stompClient = null;
@@ -20,10 +17,9 @@ $(document).ready(function () {
 
     $('#leave-btn').on('click', leaveRoom);
 
-    // 뒤로가기/탭 닫기 전 퇴장
+    // 탭 닫기 / 브라우저 닫기 시 sendBeacon으로 안정적 퇴장 처리
     window.addEventListener('beforeunload', function () {
-        leaveRoomSync();
-        if (stompClient) stompClient.deactivate();
+        navigator.sendBeacon('/api/rooms/' + ROOM_ID + '/leave');
     });
 });
 
@@ -56,15 +52,13 @@ function onStompConnected() {
     });
 
     // 참여자 목록 구독
+    // 구독 즉시 서버에서 현재 목록을 브로드캐스트한다 (handleSessionSubscribe 처리)
     stompClient.subscribe('/topic/room/' + ROOM_ID + '/participants', function (frame) {
         renderParticipants(JSON.parse(frame.body));
     });
 
-    // 이전 채팅 내역 로드
+    // 이전 채팅 내역 로드 (REST)
     loadRoomHistory();
-
-    // 현재 참여자 목록 로드
-    loadParticipants();
 }
 
 // ──────────────────────────────────────────────────────────
@@ -79,12 +73,6 @@ function loadRoomHistory() {
             '<span class="badge bg-secondary">— 이전 대화 내역 —</span></div>');
         messages.forEach(function (msg) { appendRoomMessage(msg); });
         scrollToBottom($list[0]);
-    });
-}
-
-function loadParticipants() {
-    $.get('/api/rooms/' + ROOM_ID + '/participants', function (participants) {
-        renderParticipants(participants);
     });
 }
 
@@ -113,16 +101,17 @@ function sendRoomMessage() {
 
 function leaveRoom() {
     if (!confirm('방을 나가시겠습니까?')) return;
-    leaveRoomSync();
-    if (stompClient) stompClient.deactivate();
-    window.location.href = '/main';
-}
 
-function leaveRoomSync() {
+    // beforeunload 중복 호출 방지
+    window.removeEventListener('beforeunload', arguments.callee);
+
     $.ajax({
         url: '/api/rooms/' + ROOM_ID + '/leave',
         type: 'POST',
-        async: false
+        complete: function () {
+            if (stompClient) stompClient.deactivate();
+            window.location.href = '/main';
+        }
     });
 }
 
@@ -196,4 +185,3 @@ function esc(str) {
 function scrollToBottom(el) {
     if (el) el.scrollTop = el.scrollHeight;
 }
-
