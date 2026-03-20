@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
+    <title th:text="'💬 ' + ${room.roomName}">방 채팅</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
@@ -11,41 +11,36 @@
 
 <!-- 상단 네비게이션 -->
 <nav class="navbar navbar-dark main-navbar px-3">
-    <span class="navbar-brand fw-bold">💬 Chat</span>
+    <div class="d-flex align-items-center gap-2">
+        <a th:href="@{/main}" class="btn btn-outline-light btn-sm me-2">← 메인</a>
+        <span class="navbar-brand fw-bold mb-0" th:text="'🚪 ' + ${room.roomName}">방 이름</span>
+        <span class="badge bg-light text-dark" id="participant-count">0명</span>
+    </div>
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-success" id="connection-badge">● 연결중</span>
         <span class="text-white small">
             <span class="badge bg-light text-dark" th:text="${memberInfo.nickname}">닉네임</span> 님
         </span>
-        <a th:href="@{/}" class="btn btn-outline-light btn-sm">닉네임 변경</a>
+        <button id="leave-btn" class="btn btn-danger btn-sm">나가기</button>
     </div>
 </nav>
 
 <div class="container-fluid">
     <div class="row">
 
-        <!-- 사이드바 -->
+        <!-- 참여자 목록 사이드바 -->
         <div class="col-md-3 sidebar p-3">
             <h6 class="fw-bold text-muted mb-2">
-                👥 접속자 <span class="badge bg-primary rounded-pill" id="online-count">0</span>
+                👥 참여자 <span class="badge bg-primary rounded-pill" id="participant-badge">0</span>
             </h6>
-            <div id="online-members" class="mb-3"></div>
-
-            <hr/>
-
-            <!-- 채팅방 목록 -->
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <h6 class="fw-bold text-muted mb-0">🚪 채팅방</h6>
-                <button class="btn btn-primary btn-sm" id="create-room-btn">+ 방 만들기</button>
-            </div>
-            <div id="room-list"></div>
+            <div id="participant-list"></div>
         </div>
 
         <!-- 채팅 메인 영역 -->
         <div class="col-md-9 d-flex flex-column" style="height: calc(100vh - 56px);">
 
             <div class="p-3 border-bottom bg-white">
-                <h6 class="fw-bold mb-0">🌐 전체 채팅</h6>
+                <h6 class="fw-bold mb-0" th:text="'💬 ' + ${room.roomName}">방 채팅</h6>
             </div>
 
             <!-- 메시지 목록 -->
@@ -64,31 +59,12 @@
     </div>
 </div>
 
-<!-- 방 만들기 모달 -->
-<div class="modal fade" id="createRoomModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">🚪 방 만들기</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <label class="form-label fw-semibold">방 이름</label>
-                <input type="text" id="room-name-input" class="form-control"
-                       placeholder="방 이름 입력 (최대 30자)" maxlength="30"/>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary btn-sm" id="confirm-create-room-btn">만들기</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Thymeleaf 인라인 JS -->
+<!-- Thymeleaf 인라인 JS: 서버에서 데이터 주입 -->
 <script th:inline="javascript">
     const MY_MEMBER_ID = [[${memberInfo.memberId}]];
     const MY_NICKNAME  = [[${memberInfo.nickname}]];
+    const ROOM_ID      = [[${room.roomId}]];
+    const ROOM_NAME    = [[${room.roomName}]];
 </script>
 
 <!-- Bootstrap JS -->
@@ -98,7 +74,8 @@
 <!-- SockJS + STOMP -->
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
-<!-- 공통 JS -->
-<script th:src="@{/js/chat.js}"></script>
+<!-- 방 채팅 JS -->
+<script th:src="@{/js/room.js}"></script>
 </body>
 </html>
+

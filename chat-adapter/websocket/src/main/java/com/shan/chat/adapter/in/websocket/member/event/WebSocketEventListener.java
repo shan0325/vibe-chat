@@ -3,6 +3,8 @@ package com.shan.chat.adapter.in.websocket.member.event;
 import com.shan.chat.application.member.port.in.ConnectMemberUseCase;
 import com.shan.chat.application.member.port.in.DisconnectMemberUseCase;
 import com.shan.chat.application.member.port.in.SyncPresenceUseCase;
+import com.shan.chat.application.member.port.out.ManageOnlineSessionPort;
+import com.shan.chat.application.room.port.in.LeaveAllRoomsUseCase;
 import com.shan.chat.common.exception.ChatException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,8 @@ public class WebSocketEventListener {
     private final ConnectMemberUseCase connectMemberUseCase;
     private final DisconnectMemberUseCase disconnectMemberUseCase;
     private final SyncPresenceUseCase syncPresenceUseCase;
+    private final ManageOnlineSessionPort manageOnlineSessionPort;
+    private final LeaveAllRoomsUseCase leaveAllRoomsUseCase;
 
     @EventListener
     public void handleSessionConnect(SessionConnectEvent event) {
@@ -63,6 +67,14 @@ public class WebSocketEventListener {
         log.debug("[WS disconnect] sessionId={}", sessionId);
 
         if (sessionId != null) {
+            // 세션 정리 전에 memberId를 먼저 조회하여 모든 방에서 퇴장 처리
+            manageOnlineSessionPort.getMemberBySessionId(sessionId).ifPresent(member -> {
+                try {
+                    leaveAllRoomsUseCase.leaveAllRooms(member.getMemberId());
+                } catch (Exception e) {
+                    log.warn("[WS disconnect] 방 퇴장 처리 실패: memberId={}, error={}", member.getMemberId(), e.getMessage());
+                }
+            });
             disconnectMemberUseCase.disconnect(sessionId);
         }
     }

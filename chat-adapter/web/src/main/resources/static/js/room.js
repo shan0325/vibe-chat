@@ -1,32 +1,30 @@
 /**
- * chat.js — 공통 클라이언트 스크립트 (메인 페이지)
+ * room.js — 방 채팅 클라이언트 스크립트
+ *
+ * room.html 에서 MY_MEMBER_ID, MY_NICKNAME, ROOM_ID, ROOM_NAME 전역 변수를 주입한 뒤
+ * 이 파일을 로드해야 한다.
  */
 
 let stompClient = null;
 
 $(document).ready(function () {
-    if (typeof MY_MEMBER_ID !== 'undefined') {
-        connectStomp();
-        $('#send-btn').on('click', sendLobbyMessage);
-        $('#message-input').on('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendLobbyMessage();
-            }
-        });
+    connectStomp();
 
-        // 방 만들기 모달
-        $('#create-room-btn').on('click', function () {
-            $('#room-name-input').val('');
-            var modal = new bootstrap.Modal(document.getElementById('createRoomModal'));
-            modal.show();
-        });
+    $('#send-btn').on('click', sendRoomMessage);
+    $('#message-input').on('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendRoomMessage();
+        }
+    });
 
-        $('#confirm-create-room-btn').on('click', createRoom);
-        $('#room-name-input').on('keydown', function (e) {
-            if (e.key === 'Enter') createRoom();
-        });
-    }
+    $('#leave-btn').on('click', leaveRoom);
+
+    // 뒤로가기/탭 닫기 전 퇴장
+    window.addEventListener('beforeunload', function () {
+        leaveRoomSync();
+        if (stompClient) stompClient.deactivate();
+    });
 });
 
 // ──────────────────────────────────────────────────────────
@@ -52,45 +50,41 @@ function connectStomp() {
 function onStompConnected() {
     $('#connection-badge').removeClass('bg-secondary').addClass('bg-success').text('● 연결됨');
 
-    loadLobbyHistory();
-
-    stompClient.subscribe('/topic/lobby', function (frame) {
-        appendLobbyMessage(JSON.parse(frame.body));
+    // 방 메시지 구독
+    stompClient.subscribe('/topic/room/' + ROOM_ID, function (frame) {
+        appendRoomMessage(JSON.parse(frame.body));
     });
 
-    stompClient.subscribe('/topic/presence', function (frame) {
-        renderOnlineMembers(JSON.parse(frame.body));
+    // 참여자 목록 구독
+    stompClient.subscribe('/topic/room/' + ROOM_ID + '/participants', function (frame) {
+        renderParticipants(JSON.parse(frame.body));
     });
 
-    // 방 목록 실시간 구독
-    stompClient.subscribe('/topic/rooms', function (frame) {
-        renderRoomList(JSON.parse(frame.body));
-    });
+    // 이전 채팅 내역 로드
+    loadRoomHistory();
 
-    loadOnlineMembers();
-    loadRoomList();
+    // 현재 참여자 목록 로드
+    loadParticipants();
 }
 
-function loadLobbyHistory() {
-    $.get('/api/lobby/history', { limit: 50 }, function (messages) {
+// ──────────────────────────────────────────────────────────
+// 데이터 로드
+// ──────────────────────────────────────────────────────────
+
+function loadRoomHistory() {
+    $.get('/api/rooms/' + ROOM_ID + '/history', { limit: 50 }, function (messages) {
         if (!messages || messages.length === 0) return;
         const $list = $('#message-list');
         $list.prepend('<div class="d-flex justify-content-center my-2">' +
             '<span class="badge bg-secondary">— 이전 대화 내역 —</span></div>');
-        messages.forEach(function (msg) { appendLobbyMessage(msg); });
+        messages.forEach(function (msg) { appendRoomMessage(msg); });
         scrollToBottom($list[0]);
     });
 }
 
-function loadOnlineMembers() {
-    $.get('/api/members/online', function (members) {
-        renderOnlineMembers(members);
-    });
-}
-
-function loadRoomList() {
-    $.get('/api/rooms', function (rooms) {
-        renderRoomList(rooms);
+function loadParticipants() {
+    $.get('/api/rooms/' + ROOM_ID + '/participants', function (participants) {
+        renderParticipants(participants);
     });
 }
 
@@ -98,7 +92,7 @@ function loadRoomList() {
 // 메시지 전송
 // ──────────────────────────────────────────────────────────
 
-function sendLobbyMessage() {
+function sendRoomMessage() {
     const $input  = $('#message-input');
     const content = $input.val().trim();
     if (!content) return;
@@ -107,34 +101,28 @@ function sendLobbyMessage() {
         return;
     }
     stompClient.publish({
-        destination: '/pub/lobby/message',
+        destination: '/pub/room/' + ROOM_ID + '/message',
         body: JSON.stringify({ content: content })
     });
     $input.val('').focus();
 }
 
 // ──────────────────────────────────────────────────────────
-// 방 만들기
+// 방 나가기
 // ──────────────────────────────────────────────────────────
 
-function createRoom() {
-    const roomName = $('#room-name-input').val().trim();
-    if (!roomName) {
-        alert('방 이름을 입력하세요.');
-        return;
-    }
+function leaveRoom() {
+    if (!confirm('방을 나가시겠습니까?')) return;
+    leaveRoomSync();
+    if (stompClient) stompClient.deactivate();
+    window.location.href = '/main';
+}
+
+function leaveRoomSync() {
     $.ajax({
-        url: '/api/rooms',
+        url: '/api/rooms/' + ROOM_ID + '/leave',
         type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ roomName: roomName }),
-        success: function (room) {
-            bootstrap.Modal.getInstance(document.getElementById('createRoomModal')).hide();
-            window.location.href = '/room/' + room.roomId;
-        },
-        error: function () {
-            alert('방 생성에 실패했습니다.');
-        }
+        async: false
     });
 }
 
@@ -142,7 +130,7 @@ function createRoom() {
 // UI 렌더링
 // ──────────────────────────────────────────────────────────
 
-function appendLobbyMessage(msg) {
+function appendRoomMessage(msg) {
     const $list = $('#message-list');
     let html;
 
@@ -174,10 +162,10 @@ function appendLobbyMessage(msg) {
     scrollToBottom($list[0]);
 }
 
-function renderOnlineMembers(members) {
-    const $list = $('#online-members');
+function renderParticipants(participants) {
+    const $list = $('#participant-list');
     $list.empty();
-    members.forEach(function (member) {
+    participants.forEach(function (member) {
         const isMe = member.memberId === MY_MEMBER_ID;
         $list.append(
             `<div class="online-user-item">
@@ -188,24 +176,9 @@ function renderOnlineMembers(members) {
             </div>`
         );
     });
-    $('#online-count').text(members.length);
-}
-
-function renderRoomList(rooms) {
-    const $list = $('#room-list');
-    $list.empty();
-    if (!rooms || rooms.length === 0) {
-        $list.append('<p class="text-muted small text-center py-2">생성된 방이 없습니다.</p>');
-        return;
-    }
-    rooms.forEach(function (room) {
-        $list.append(
-            `<div class="room-item" onclick="window.location.href='/room/${esc(room.roomId)}'">
-                <div class="room-name">${esc(room.roomName)}</div>
-                <span class="badge bg-secondary">${room.participantCount}명</span>
-            </div>`
-        );
-    });
+    const count = participants.length;
+    $('#participant-count').text(count + '명');
+    $('#participant-badge').text(count);
 }
 
 // ──────────────────────────────────────────────────────────
@@ -223,3 +196,4 @@ function esc(str) {
 function scrollToBottom(el) {
     if (el) el.scrollTop = el.scrollHeight;
 }
+

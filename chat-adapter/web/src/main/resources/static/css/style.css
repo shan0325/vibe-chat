@@ -119,6 +119,14 @@ body {
     color: var(--chat-primary);
     font-weight: 600;
 }
+.room-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    margin-right: 6px;
+}
 
 /* ============================================================
    채팅 메시지 영역 (Phase 2 준비)
@@ -186,4 +194,3 @@ body {
     background-color: var(--chat-primary-dark);
     border-color: var(--chat-primary-dark);
 }
-
