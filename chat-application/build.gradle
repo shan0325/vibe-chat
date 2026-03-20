@@ -3,5 +3,10 @@
 dependencies {
     implementation project(':chat-common')
     implementation project(':chat-domain')
+
+    // @Service, @Component 등 Spring 스테레오타입 및 @Transactional 지원
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework:spring-tx'
+    implementation 'org.slf4j:slf4j-api'  // @Slf4j 지원
 }
 

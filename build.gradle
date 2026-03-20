@@ -43,6 +43,11 @@ subprojects {
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
 
+    // Spring 6+ 에서 @RequestParam, @PathVariable 파라미터 이름 리플렉션 지원
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs += ['-parameters']
+    }
+
     tasks.named('test') {
         useJUnitPlatform()
     }
