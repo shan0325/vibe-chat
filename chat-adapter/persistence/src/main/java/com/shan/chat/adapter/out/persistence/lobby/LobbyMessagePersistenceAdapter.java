@@ -1,13 +1,13 @@
 package com.shan.chat.adapter.out.persistence.lobby;
 
 import com.shan.chat.adapter.out.persistence.lobby.entity.LobbyMessageJpaEntity;
+import com.shan.chat.adapter.out.persistence.lobby.query.LobbyMessageQueryRepository;
 import com.shan.chat.adapter.out.persistence.lobby.repository.LobbyMessageJpaRepository;
 import com.shan.chat.application.lobby.dto.LobbyMessageDto;
 import com.shan.chat.application.lobby.port.out.LoadLobbyHistoryPort;
 import com.shan.chat.application.lobby.port.out.SaveLobbyMessagePort;
 import com.shan.chat.domain.message.ChatMessage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class LobbyMessagePersistenceAdapter implements SaveLobbyMessagePort, LoadLobbyHistoryPort {
 
     private final LobbyMessageJpaRepository lobbyMessageJpaRepository;
+    private final LobbyMessageQueryRepository lobbyMessageQueryRepository;
 
     @Override
     public void save(ChatMessage message) {
@@ -33,11 +34,14 @@ public class LobbyMessagePersistenceAdapter implements SaveLobbyMessagePort, Loa
         );
     }
 
+    /**
+     * Querydsl을 사용해 최근 로비 메시지를 조회한다.
+     * Spring Data Pageable 대신 Querydsl limit()으로 타입 안정성을 확보한다.
+     */
     @Override
     public List<LobbyMessageDto> loadRecent(int limit) {
-        List<LobbyMessageJpaEntity> entities =
-                lobbyMessageJpaRepository.findRecent(PageRequest.of(0, limit));
-        Collections.reverse(entities);
+        List<LobbyMessageJpaEntity> entities = lobbyMessageQueryRepository.findRecent(limit);
+        Collections.reverse(entities);   // DESC 조회 후 오름차순으로 정렬
         return entities.stream()
                 .map(e -> LobbyMessageDto.builder()
                         .senderId(e.getSenderId())

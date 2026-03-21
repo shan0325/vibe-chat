@@ -6,7 +6,9 @@ import com.shan.chat.application.member.port.out.LoadMemberPort;
 import com.shan.chat.application.room.dto.RoomDto;
 import com.shan.chat.application.room.dto.RoomMessageDto;
 import com.shan.chat.application.room.port.in.*;
+import com.shan.chat.application.room.port.in.SearchRoomUseCase;
 import com.shan.chat.application.room.port.out.*;
+import com.shan.chat.application.room.port.out.SearchRoomPort;
 import com.shan.chat.common.exception.ChatException;
 import com.shan.chat.domain.room.ChatRoom;
 import com.shan.chat.domain.room.RoomMessage;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
+
 public class RoomService implements
         CreateRoomUseCase,
         GetRoomListUseCase,
@@ -35,6 +38,7 @@ public class RoomService implements
         GetRoomParticipantsUseCase,
         SyncRoomPresenceUseCase,
         SyncDirectPresenceUseCase,
+        SearchRoomUseCase,
         StartDirectChatUseCase {
 
     private final LoadRoomPort loadRoomPort;
@@ -46,6 +50,7 @@ public class RoomService implements
     private final SaveRoomMessagePort saveRoomMessagePort;
     private final FindDirectRoomPort findDirectRoomPort;
     private final ManageOnlineSessionPort manageOnlineSessionPort;
+    private final SearchRoomPort searchRoomPort;
 
     @Override
     @Transactional
@@ -142,6 +147,17 @@ public class RoomService implements
     public List<RoomDto> getRoomList() {
         return loadRoomPort.loadAllActive().stream()
                 .filter(room -> room.getRoomType() == com.shan.chat.domain.room.ChatRoom.RoomType.GROUP)
+                .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(room.getRoomId())))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 키워드로 GROUP 방을 검색한다. Querydsl Dynamic Predicate 활용.
+     * keyword가 null/blank이면 전체 GROUP 방을 반환한다.
+     */
+    @Override
+    public List<RoomDto> searchRooms(String keyword) {
+        return searchRoomPort.searchGroupRooms(keyword).stream()
                 .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(room.getRoomId())))
                 .collect(Collectors.toList());
     }

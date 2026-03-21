@@ -26,6 +26,16 @@ $(document).ready(function () {
         $('#room-name-input').on('keydown', function (e) {
             if (e.key === 'Enter') createRoom();
         });
+
+        // 방 이름 검색 (300ms debounce)
+        let searchTimer = null;
+        $('#room-search-input').on('input', function () {
+            clearTimeout(searchTimer);
+            const keyword = $(this).val().trim();
+            searchTimer = setTimeout(function () {
+                searchRooms(keyword);
+            }, 300);
+        });
     }
 });
 
@@ -147,6 +157,16 @@ function createRoom() {
         error: function () {
             alert('방 생성에 실패했습니다.');
         }
+    });
+}
+
+// ──────────────────────────────────────────────────────────
+// 방 검색 (Querydsl)
+// ──────────────────────────────────────────────────────────
+
+function searchRooms(keyword) {
+    $.get('/api/rooms/search', { keyword: keyword }, function (rooms) {
+        renderRoomList(rooms);
     });
 }
 

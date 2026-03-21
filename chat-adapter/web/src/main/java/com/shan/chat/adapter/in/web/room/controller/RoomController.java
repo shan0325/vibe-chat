@@ -30,6 +30,7 @@ public class RoomController {
     private final GetRoomHistoryUseCase getRoomHistoryUseCase;
     private final GetRoomParticipantsUseCase getRoomParticipantsUseCase;
     private final FindMemberUseCase findMemberUseCase;
+    private final SearchRoomUseCase searchRoomUseCase;
 
     // ── 방 채팅 페이지 ─────────────────────────────────────────
 
@@ -45,7 +46,6 @@ public class RoomController {
         MemberInfo memberInfo = findMemberUseCase.findByMemberId(memberId)
                 .orElseThrow(() -> new ChatException("사용자 정보를 찾을 수 없습니다: " + memberId));
 
-        // 방에 아직 참여하지 않은 경우 자동 입장
         joinRoomUseCase.join(memberId, roomId);
 
         model.addAttribute("room", room);
@@ -59,6 +59,13 @@ public class RoomController {
     @ResponseBody
     public List<RoomDto> getRoomList() {
         return getRoomListUseCase.getRoomList();
+    }
+
+    /** Querydsl Dynamic Predicate 기반 방 이름 검색 */
+    @GetMapping("/api/rooms/search")
+    @ResponseBody
+    public List<RoomDto> searchRooms(@RequestParam(required = false) String keyword) {
+        return searchRoomUseCase.searchRooms(keyword);
     }
 
     @PostMapping("/api/rooms")

@@ -4,6 +4,7 @@ import com.shan.chat.adapter.out.persistence.member.repository.MemberJpaReposito
 import com.shan.chat.adapter.out.persistence.room.entity.ChatRoomJpaEntity;
 import com.shan.chat.adapter.out.persistence.room.entity.RoomParticipantId;
 import com.shan.chat.adapter.out.persistence.room.entity.RoomParticipantJpaEntity;
+import com.shan.chat.adapter.out.persistence.room.query.RoomQueryRepository;
 import com.shan.chat.adapter.out.persistence.room.repository.ChatRoomJpaRepository;
 import com.shan.chat.adapter.out.persistence.room.repository.RoomParticipantJpaRepository;
 import com.shan.chat.application.member.dto.MemberInfo;
@@ -21,11 +22,12 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
-        LoadRoomParticipantPort, SaveRoomParticipantPort, FindDirectRoomPort {
+        LoadRoomParticipantPort, SaveRoomParticipantPort, FindDirectRoomPort, SearchRoomPort {
 
     private final ChatRoomJpaRepository chatRoomJpaRepository;
     private final RoomParticipantJpaRepository roomParticipantJpaRepository;
     private final MemberJpaRepository memberJpaRepository;
+    private final RoomQueryRepository roomQueryRepository;
 
     // ── LoadRoomPort ──────────────────────────────────────────
 
@@ -61,18 +63,30 @@ public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
                 );
     }
 
+    // ── SearchRoomPort ────────────────────────────────────────
+
+    /**
+     * Querydsl Dynamic Predicate를 사용해 방 이름 키워드로 검색한다.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChatRoom> searchGroupRooms(String keyword) {
+        return roomQueryRepository.searchActiveGroupRooms(keyword)
+                .stream().map(this::toDomain).collect(Collectors.toList());
+    }
+
     // ── FindDirectRoomPort ────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
     public Optional<ChatRoom> findDirectRoom(String member1Id, String member2Id) {
-        return chatRoomJpaRepository.findDirectRoom(member1Id, member2Id).map(this::toDomain);
+        return roomQueryRepository.findDirectRoom(member1Id, member2Id).map(this::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ChatRoom> findDirectRoomsByMemberId(String memberId) {
-        return chatRoomJpaRepository.findDirectRoomsByMemberId(memberId)
+        return roomQueryRepository.findDirectRoomsByMemberId(memberId)
                 .stream().map(this::toDomain).collect(Collectors.toList());
     }
 
@@ -94,7 +108,7 @@ public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
     @Override
     @Transactional(readOnly = true)
     public int countByRoomId(String roomId) {
-        return roomParticipantJpaRepository.countByRoomId(roomId);
+        return (int) roomQueryRepository.countParticipantsByRoomId(roomId);
     }
 
     @Override
@@ -148,5 +162,4 @@ public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
                 : ChatRoomJpaEntity.RoomType.GROUP;
     }
 }
-
 

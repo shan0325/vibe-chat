@@ -1,13 +1,13 @@
 package com.shan.chat.adapter.out.persistence.room;
 
 import com.shan.chat.adapter.out.persistence.room.entity.RoomMessageJpaEntity;
+import com.shan.chat.adapter.out.persistence.room.query.RoomMessageQueryRepository;
 import com.shan.chat.adapter.out.persistence.room.repository.RoomMessageJpaRepository;
 import com.shan.chat.application.room.dto.RoomMessageDto;
 import com.shan.chat.application.room.port.out.LoadRoomHistoryPort;
 import com.shan.chat.application.room.port.out.SaveRoomMessagePort;
 import com.shan.chat.domain.room.RoomMessage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class RoomMessagePersistenceAdapter implements SaveRoomMessagePort, LoadRoomHistoryPort {
 
     private final RoomMessageJpaRepository roomMessageJpaRepository;
+    private final RoomMessageQueryRepository roomMessageQueryRepository;
 
     @Override
     public void save(RoomMessage message) {
@@ -32,11 +33,14 @@ public class RoomMessagePersistenceAdapter implements SaveRoomMessagePort, LoadR
                 .build());
     }
 
+    /**
+     * Querydsl을 사용해 특정 방의 최근 메시지를 조회한다.
+     */
     @Override
     public List<RoomMessageDto> loadRecent(String roomId, int limit) {
         List<RoomMessageJpaEntity> entities =
-                roomMessageJpaRepository.findRecentByRoomId(roomId, PageRequest.of(0, limit));
-        Collections.reverse(entities);
+                roomMessageQueryRepository.findRecentByRoomId(roomId, limit);
+        Collections.reverse(entities);   // DESC 조회 후 오름차순으로 정렬
         return entities.stream()
                 .map(e -> RoomMessageDto.builder()
                         .roomId(e.getRoomId())
