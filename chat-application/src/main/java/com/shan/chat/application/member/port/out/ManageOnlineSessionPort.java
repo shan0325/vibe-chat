@@ -19,4 +19,7 @@ public interface ManageOnlineSessionPort {
 
     /** 현재 해당 방 페이지를 열고 있는 고유 멤버 수를 반환한다. */
     int countMembersInRoom(String roomId);
+
+    /** 현재 해당 방 페이지를 열고 있는 MemberInfo 목록을 반환한다 (memberId 기준 중복 제거). */
+    List<MemberInfo> getMembersInRoom(String roomId);
 }

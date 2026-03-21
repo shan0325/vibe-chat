@@ -159,7 +159,8 @@ public class RoomService implements
 
     @Override
     public void syncParticipants(String roomId) {
-        List<MemberInfo> participants = loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(roomId);
+        // STOMP 구독 기반 live 목록을 참여자 목록으로 사용
+        List<MemberInfo> participants = manageOnlineSessionPort.getMembersInRoom(roomId);
         broadcastRoomPort.broadcastRoomParticipants(roomId, participants);
     }
 

@@ -96,9 +96,12 @@ public class WebSocketEventListener {
                 if (sessionId != null) {
                     manageOnlineSessionPort.enterRoom(sessionId, roomId);
                     try {
+                        // 방 참여자 목록을 구독 기반 live 목록으로 갱신 (GROUP + DIRECT 공통)
+                        syncRoomPresenceUseCase.syncParticipants(roomId);
+                        // DIRECT 방이면 사이드바 입장 수도 갱신
                         syncDirectPresenceUseCase.syncDirectPresenceForRoom(roomId);
                     } catch (Exception e) {
-                        log.warn("[WS subscribe] direct room presence 동기화 실패: roomId={}, error={}", roomId, e.getMessage());
+                        log.warn("[WS subscribe] room presence 동기화 실패: roomId={}, error={}", roomId, e.getMessage());
                     }
                 }
             }
@@ -128,12 +131,13 @@ public class WebSocketEventListener {
             if (memberId != null) {
                 syncDirectPresenceUseCase.syncDirectPresence(memberId);
             }
-            // 방 페이지를 닫고 나간 경우 해당 방 참여자 사이드바도 갱신
+            // 방 페이지를 닫고 나간 경우: 해당 방 참여자 목록 + DIRECT 사이드바 갱신
             if (roomId != null) {
                 try {
-                    syncDirectPresenceUseCase.syncDirectPresenceForRoom(roomId);
+                    syncRoomPresenceUseCase.syncParticipants(roomId);          // GROUP/DIRECT 참여자 목록
+                    syncDirectPresenceUseCase.syncDirectPresenceForRoom(roomId); // DIRECT 사이드바 수
                 } catch (Exception e) {
-                    log.warn("[WS disconnect] direct room presence 동기화 실패: roomId={}, error={}", roomId, e.getMessage());
+                    log.warn("[WS disconnect] room presence 동기화 실패: roomId={}, error={}", roomId, e.getMessage());
                 }
             }
         }

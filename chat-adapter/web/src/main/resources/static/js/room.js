@@ -16,13 +16,6 @@ $(document).ready(function () {
     });
 
     $('#leave-btn').on('click', leaveRoom);
-
-    // 탭 닫기 / 새로고침 시 GROUP 방 퇴장 처리
-    window.addEventListener('beforeunload', function () {
-        if (ROOM_TYPE === 'GROUP') {
-            navigator.sendBeacon('/api/rooms/' + ROOM_ID + '/leave');
-        }
-    });
 });
 
 // ──────────────────────────────────────────────────────────

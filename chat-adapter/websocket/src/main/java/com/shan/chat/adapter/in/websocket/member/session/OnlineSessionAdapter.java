@@ -73,4 +73,24 @@ public class OnlineSessionAdapter implements ManageOnlineSessionPort {
                 .distinct()
                 .count();
     }
+
+    /**
+     * 현재 해당 방 페이지를 열고 있는 MemberInfo 목록.
+     * 같은 멤버가 여러 탭으로 같은 방을 열어도 1명으로 센다.
+     */
+    @Override
+    public List<MemberInfo> getMembersInRoom(String roomId) {
+        return sessionToRoom.entrySet().stream()
+                .filter(e -> roomId.equals(e.getValue()))
+                .map(e -> sessions.get(e.getKey()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(
+                        MemberInfo::getMemberId,
+                        m -> m,
+                        (existing, replacement) -> existing
+                ))
+                .values()
+                .stream()
+                .collect(Collectors.toList());
+    }
 }
