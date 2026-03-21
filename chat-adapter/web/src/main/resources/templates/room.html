@@ -21,7 +21,8 @@
         <span class="text-white small">
             <span class="badge bg-light text-dark" th:text="${memberInfo.nickname}">닉네임</span> 님
         </span>
-        <button id="leave-btn" class="btn btn-danger btn-sm">나가기</button>
+        <button th:if="${room.roomType == 'GROUP'}" id="leave-btn" class="btn btn-danger btn-sm">나가기</button>
+        <button th:if="${room.roomType == 'DIRECT'}" id="leave-btn" class="btn btn-outline-light btn-sm">← 닫기</button>
     </div>
 </nav>
 
@@ -65,6 +66,7 @@
     const MY_NICKNAME  = [[${memberInfo.nickname}]];
     const ROOM_ID      = [[${room.roomId}]];
     const ROOM_NAME    = [[${room.roomName}]];
+    const ROOM_TYPE    = [[${room.roomType}]];
 </script>
 
 <!-- Bootstrap JS -->

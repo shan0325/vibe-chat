@@ -21,6 +21,12 @@
     </div>
 </nav>
 
+<!-- 에러 알림 (Flash attribute) -->
+<div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show m-2" role="alert">
+    <span th:text="${errorMessage}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+
 <div class="container-fluid">
     <div class="row">
 
@@ -30,6 +36,12 @@
                 👥 접속자 <span class="badge bg-primary rounded-pill" id="online-count">0</span>
             </h6>
             <div id="online-members" class="mb-3"></div>
+
+            <hr/>
+
+            <!-- 1:1 대화 목록 -->
+            <h6 class="fw-bold text-muted mb-2">💬 1:1 대화</h6>
+            <div id="direct-room-list" class="mb-3"></div>
 
             <hr/>
 

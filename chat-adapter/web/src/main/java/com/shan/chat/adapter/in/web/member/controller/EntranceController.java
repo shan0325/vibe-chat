@@ -42,7 +42,11 @@ public class EntranceController {
     public String setNickname(@RequestParam("nickname") String nickname, HttpSession session) {
         String memberId = (String) session.getAttribute(SESSION_MEMBER_ID);
         if (memberId == null) return "redirect:/";
-        changeNicknameUseCase.change(memberId, nickname.trim());
+
+        String trimmed = nickname.trim();
+        if (trimmed.isEmpty()) return "redirect:/";   // 빈 닉네임은 입구 페이지로
+
+        changeNicknameUseCase.change(memberId, trimmed);
         return "redirect:/main";
     }
 

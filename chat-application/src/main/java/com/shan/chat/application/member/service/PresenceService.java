@@ -57,6 +57,16 @@ public class PresenceService implements ConnectMemberUseCase, DisconnectMemberUs
     }
 
     @Override
+    public String getAndDisconnect(String sessionId) {
+        // 세션 제거 전 memberId 를 먼저 확보
+        String memberId = manageOnlineSessionPort.getMemberBySessionId(sessionId)
+                .map(MemberInfo::getMemberId)
+                .orElse(null);
+        disconnect(sessionId);
+        return memberId;
+    }
+
+    @Override
     public List<MemberInfo> getOnlineMembers() {
         return manageOnlineSessionPort.getAllOnlineMembers();
     }

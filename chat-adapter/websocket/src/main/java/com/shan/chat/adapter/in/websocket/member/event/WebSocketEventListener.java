@@ -3,8 +3,10 @@ package com.shan.chat.adapter.in.websocket.member.event;
 import com.shan.chat.application.member.port.in.ConnectMemberUseCase;
 import com.shan.chat.application.member.port.in.DisconnectMemberUseCase;
 import com.shan.chat.application.member.port.in.SyncPresenceUseCase;
+import com.shan.chat.application.room.port.in.SyncDirectPresenceUseCase;
 import com.shan.chat.application.room.port.in.SyncRoomPresenceUseCase;
 import com.shan.chat.common.exception.ChatException;
+import com.shan.chat.application.member.port.out.ManageOnlineSessionPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -23,6 +25,8 @@ public class WebSocketEventListener {
     private final DisconnectMemberUseCase disconnectMemberUseCase;
     private final SyncPresenceUseCase syncPresenceUseCase;
     private final SyncRoomPresenceUseCase syncRoomPresenceUseCase;
+    private final SyncDirectPresenceUseCase syncDirectPresenceUseCase;
+    private final ManageOnlineSessionPort manageOnlineSessionPort;
 
     @EventListener
     public void handleSessionConnect(SessionConnectEvent event) {
@@ -35,6 +39,8 @@ public class WebSocketEventListener {
         if (sessionId != null && memberId != null && !memberId.isBlank()) {
             try {
                 connectMemberUseCase.connect(sessionId, memberId);
+                // 1:1 대화 상대방들의 온라인 수 실시간 갱신
+                syncDirectPresenceUseCase.syncDirectPresence(memberId);
             } catch (ChatException e) {
                 log.warn("[WS connect] 처리 실패: {}", e.getMessage());
             }
@@ -78,6 +84,24 @@ public class WebSocketEventListener {
                     log.warn("[WS subscribe] 방 참여자 동기화 실패: roomId={}, error={}", roomId, e.getMessage());
                 }
             }
+            return;
+        }
+
+        // /topic/room/{roomId} — 사용자가 방 페이지를 열어 메시지 채널에 구독함
+        if (destination.startsWith("/topic/room/")) {
+            String[] parts = destination.split("/");
+            if (parts.length == 4) {   // ["", "topic", "room", "{roomId}"]
+                String roomId = parts[3];
+                String sessionId = accessor.getSessionId();
+                if (sessionId != null) {
+                    manageOnlineSessionPort.enterRoom(sessionId, roomId);
+                    try {
+                        syncDirectPresenceUseCase.syncDirectPresenceForRoom(roomId);
+                    } catch (Exception e) {
+                        log.warn("[WS subscribe] direct room presence 동기화 실패: roomId={}, error={}", roomId, e.getMessage());
+                    }
+                }
+            }
         }
     }
 
@@ -95,7 +119,23 @@ public class WebSocketEventListener {
         log.debug("[WS disconnect] sessionId={}", sessionId);
 
         if (sessionId != null) {
-            disconnectMemberUseCase.disconnect(sessionId);
+            // 세션 제거 전 roomId 확보 (removeSession 이전에 조회해야 함)
+            String roomId = manageOnlineSessionPort.getRoomBySessionId(sessionId).orElse(null);
+
+            // 세션 제거 + 접속자 목록/로비 메시지 브로드캐스트
+            String memberId = disconnectMemberUseCase.getAndDisconnect(sessionId);
+
+            if (memberId != null) {
+                syncDirectPresenceUseCase.syncDirectPresence(memberId);
+            }
+            // 방 페이지를 닫고 나간 경우 해당 방 참여자 사이드바도 갱신
+            if (roomId != null) {
+                try {
+                    syncDirectPresenceUseCase.syncDirectPresenceForRoom(roomId);
+                } catch (Exception e) {
+                    log.warn("[WS disconnect] direct room presence 동기화 실패: roomId={}, error={}", roomId, e.getMessage());
+                }
+            }
         }
     }
 }

@@ -67,8 +67,14 @@ function onStompConnected() {
         renderRoomList(JSON.parse(frame.body));
     });
 
+    // 내 1:1 대화 목록 실시간 구독
+    stompClient.subscribe('/topic/member/' + MY_MEMBER_ID + '/direct', function (frame) {
+        renderDirectRoomList(JSON.parse(frame.body));
+    });
+
     loadOnlineMembers();
     loadRoomList();
+    loadDirectRooms();
 }
 
 function loadLobbyHistory() {
@@ -91,6 +97,12 @@ function loadOnlineMembers() {
 function loadRoomList() {
     $.get('/api/rooms', function (rooms) {
         renderRoomList(rooms);
+    });
+}
+
+function loadDirectRooms() {
+    $.get('/api/direct/rooms', function (rooms) {
+        renderDirectRoomList(rooms);
     });
 }
 
@@ -139,6 +151,23 @@ function createRoom() {
 }
 
 // ──────────────────────────────────────────────────────────
+// 1:1 채팅 시작
+// ──────────────────────────────────────────────────────────
+
+function startDirectChat(targetMemberId) {
+    $.ajax({
+        url: '/api/direct/' + targetMemberId,
+        type: 'POST',
+        success: function (room) {
+            window.location.href = '/room/' + room.roomId;
+        },
+        error: function () {
+            alert('1:1 채팅을 시작할 수 없습니다.');
+        }
+    });
+}
+
+// ──────────────────────────────────────────────────────────
 // UI 렌더링
 // ──────────────────────────────────────────────────────────
 
@@ -179,14 +208,23 @@ function renderOnlineMembers(members) {
     $list.empty();
     members.forEach(function (member) {
         const isMe = member.memberId === MY_MEMBER_ID;
-        $list.append(
-            `<div class="online-user-item">
-                <span class="online-dot"></span>
-                <span class="${isMe ? 'fw-bold' : ''}">
-                    ${esc(member.nickname)}${isMe ? ' <small class="text-muted">(나)</small>' : ''}
-                </span>
-            </div>`
-        );
+        if (isMe) {
+            $list.append(
+                `<div class="online-user-item">
+                    <span class="online-dot"></span>
+                    <span class="fw-bold">${esc(member.nickname)} <small class="text-muted">(나)</small></span>
+                </div>`
+            );
+        } else {
+            $list.append(
+                `<div class="online-user-item" onclick="startDirectChat('${esc(member.memberId)}')"
+                      title="${esc(member.nickname)}님과 1:1 채팅">
+                    <span class="online-dot"></span>
+                    <span>${esc(member.nickname)}</span>
+                    <small class="text-muted ms-auto">💬</small>
+                </div>`
+            );
+        }
     });
     $('#online-count').text(members.length);
 }
@@ -194,15 +232,34 @@ function renderOnlineMembers(members) {
 function renderRoomList(rooms) {
     const $list = $('#room-list');
     $list.empty();
-    if (!rooms || rooms.length === 0) {
+    // DIRECT 방은 사이드바 채팅방 목록에 표시하지 않는다 (클라이언트 2차 방어)
+    const groupRooms = (rooms || []).filter(r => r.roomType === 'GROUP');
+    if (groupRooms.length === 0) {
         $list.append('<p class="text-muted small text-center py-2">생성된 방이 없습니다.</p>');
+        return;
+    }
+    groupRooms.forEach(function (room) {
+        $list.append(
+            `<div class="room-item" onclick="window.location.href='/room/${esc(room.roomId)}'">
+                <div class="room-name">${esc(room.roomName)}</div>
+                <span class="badge bg-secondary">${room.participantCount}명</span>
+            </div>`
+        );
+    });
+}
+
+function renderDirectRoomList(rooms) {
+    const $list = $('#direct-room-list');
+    $list.empty();
+    if (!rooms || rooms.length === 0) {
+        $list.append('<p class="text-muted small text-center py-2">진행 중인 대화가 없습니다.</p>');
         return;
     }
     rooms.forEach(function (room) {
         $list.append(
             `<div class="room-item" onclick="window.location.href='/room/${esc(room.roomId)}'">
                 <div class="room-name">${esc(room.roomName)}</div>
-                <span class="badge bg-secondary">${room.participantCount}명</span>
+                <span class="badge bg-info text-dark">${room.participantCount}명</span>
             </div>`
         );
     });

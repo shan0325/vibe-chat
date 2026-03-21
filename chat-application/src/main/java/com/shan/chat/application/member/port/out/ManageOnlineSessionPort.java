@@ -10,5 +10,13 @@ public interface ManageOnlineSessionPort {
     void removeSession(String sessionId);
     Optional<MemberInfo> getMemberBySessionId(String sessionId);
     List<MemberInfo> getAllOnlineMembers();
-}
 
+    /** 해당 세션이 특정 방 페이지를 열었음을 기록한다. */
+    void enterRoom(String sessionId, String roomId);
+
+    /** 세션 제거 전 현재 방 roomId를 반환한다. */
+    Optional<String> getRoomBySessionId(String sessionId);
+
+    /** 현재 해당 방 페이지를 열고 있는 고유 멤버 수를 반환한다. */
+    int countMembersInRoom(String roomId);
+}

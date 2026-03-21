@@ -30,5 +30,10 @@ public class RoomBroadcastAdapter implements BroadcastRoomPort {
     public void broadcastRoomList(List<RoomDto> rooms) {
         messagingTemplate.convertAndSend("/topic/rooms", rooms);
     }
+
+    @Override
+    public void notifyDirectChatUpdate(String memberId, List<RoomDto> directRooms) {
+        messagingTemplate.convertAndSend("/topic/member/" + memberId + "/direct", directRooms);
+    }
 }
 

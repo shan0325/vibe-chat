@@ -14,11 +14,15 @@ import java.time.LocalDateTime;
 @Builder
 public class ChatRoomJpaEntity {
 
+    public enum RoomType {
+        GROUP, DIRECT
+    }
+
     @Id
     @Column(name = "room_id", length = 36)
     private String roomId;
 
-    @Column(name = "room_name", nullable = false, length = 30)
+    @Column(name = "room_name", nullable = false, length = 50)
     private String roomName;
 
     @Column(name = "creator_id", nullable = false, length = 36)
@@ -30,5 +34,9 @@ public class ChatRoomJpaEntity {
 
     @Column(name = "active", nullable = false)
     private boolean active;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "room_type", nullable = false, length = 10)
+    private RoomType roomType;
 }
 

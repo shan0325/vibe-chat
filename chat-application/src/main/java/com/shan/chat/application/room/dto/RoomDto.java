@@ -13,5 +13,6 @@ public class RoomDto {
     private String creatorId;
     private int participantCount;
     private LocalDateTime createdAt;
+    private String roomType;   // "GROUP" | "DIRECT"
 }
 

@@ -15,6 +15,8 @@ Spring Boot 기반의 실시간 웹 채팅 서비스입니다.
 - 방 단위 1:N 실시간 채팅
 - 참여자 목록 실시간 갱신
 - 입장 / 퇴장 시스템 메시지
+- 접속자 목록에서 특정 사용자 선택 후 1:1 채팅
+- 1:1 채팅 시 상대방에게 실시간 알림
 
 ---
 
@@ -111,6 +113,7 @@ ws://localhost:8080/ws-chat
 | `/topic/rooms` | 방 목록 갱신 |
 | `/topic/room/{roomId}` | 방 채팅 메시지 수신 |
 | `/topic/room/{roomId}/participants` | 방 참여자 목록 갱신 |
+| `/topic/member/{memberId}/direct` | 내 1:1 대화 목록 실시간 갱신 |
 
 ---
 
@@ -155,6 +158,13 @@ ws://localhost:8080/ws-chat
 | `POST` | `/api/rooms/{roomId}/leave` | 방 퇴장 |
 | `GET` | `/api/rooms/{roomId}/history` | 방 채팅 이력 조회 |
 | `GET` | `/api/rooms/{roomId}/participants` | 방 참여자 목록 조회 |
+
+### 1:1 채팅
+
+| Method | URL | 설명 |
+|---|---|---|
+| `POST` | `/api/direct/{targetMemberId}` | 1:1 채팅 시작 (방 생성 또는 기존 방 반환) |
+| `GET` | `/api/direct/rooms` | 내가 참여 중인 1:1 대화 목록 조회 |
 
 ---
 
@@ -205,7 +215,7 @@ http://localhost:8080
 | Phase 1 | 사용자 진입 / 닉네임 기능 | ✅ 완료 |
 | Phase 2 | 메인 페이지 / 전체 채팅 | ✅ 완료 |
 | Phase 3 | 방 생성 / 방 목록 / 1:N 채팅 | ✅ 완료 |
-| Phase 4 | 1:1 채팅 | 🔜 예정 |
+| Phase 4 | 1:1 채팅 | ✅ 완료 |
 | Phase 5 | 영속화 / Querydsl 고도화 | 🔜 예정 |
 | Phase 6 | 안정화 / 테스트 / 운영 준비 | 🔜 예정 |
 

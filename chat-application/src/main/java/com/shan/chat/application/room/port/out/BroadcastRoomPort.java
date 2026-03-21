@@ -10,5 +10,8 @@ public interface BroadcastRoomPort {
     void broadcastRoomMessage(String roomId, RoomMessageDto message);
     void broadcastRoomParticipants(String roomId, List<MemberInfo> participants);
     void broadcastRoomList(List<RoomDto> rooms);
+
+    /** 특정 멤버의 1:1 대화 목록을 실시간으로 갱신한다. */
+    void notifyDirectChatUpdate(String memberId, List<RoomDto> directRooms);
 }
 

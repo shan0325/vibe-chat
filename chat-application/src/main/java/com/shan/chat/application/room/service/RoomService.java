@@ -1,6 +1,7 @@
 package com.shan.chat.application.room.service;
 
 import com.shan.chat.application.member.dto.MemberInfo;
+import com.shan.chat.application.member.port.out.ManageOnlineSessionPort;
 import com.shan.chat.application.member.port.out.LoadMemberPort;
 import com.shan.chat.application.room.dto.RoomDto;
 import com.shan.chat.application.room.dto.RoomMessageDto;
@@ -32,7 +33,9 @@ public class RoomService implements
         LeaveRoomUseCase,
         LeaveAllRoomsUseCase,
         GetRoomParticipantsUseCase,
-        SyncRoomPresenceUseCase {
+        SyncRoomPresenceUseCase,
+        SyncDirectPresenceUseCase,
+        StartDirectChatUseCase {
 
     private final LoadRoomPort loadRoomPort;
     private final SaveRoomPort saveRoomPort;
@@ -41,6 +44,8 @@ public class RoomService implements
     private final BroadcastRoomPort broadcastRoomPort;
     private final LoadMemberPort loadMemberPort;
     private final SaveRoomMessagePort saveRoomMessagePort;
+    private final FindDirectRoomPort findDirectRoomPort;
+    private final ManageOnlineSessionPort manageOnlineSessionPort;
 
     @Override
     @Transactional
@@ -76,12 +81,19 @@ public class RoomService implements
 
         boolean isNew = !loadRoomParticipantPort.existsByRoomIdAndMemberId(roomId, memberId);
 
+        // DIRECT 방은 startDirectChat() 으로 초대된 참여자만 접근 가능
+        if (room.getRoomType() == ChatRoom.RoomType.DIRECT && isNew) {
+            throw new ChatException("1:1 채팅방에 참여할 권한이 없습니다.");
+        }
+
         if (isNew) {
             saveRoomParticipantPort.save(RoomParticipant.join(roomId, memberId));
             String nickname = getNickname(memberId);
             saveRoomMessagePort.save(systemRoomMsg(roomId, nickname + "님이 입장했습니다."));
             broadcastRoomPort.broadcastRoomMessage(roomId, systemRoomMessageDto(roomId, nickname + "님이 입장했습니다."));
-            broadcastRoomList();
+            if (room.getRoomType() == ChatRoom.RoomType.GROUP) {
+                broadcastRoomList();
+            }
         }
 
         // 이미 참여 중이어도 항상 참여자 목록을 브로드캐스트한다.
@@ -97,6 +109,8 @@ public class RoomService implements
     public void leave(String memberId, String roomId) {
         if (!loadRoomParticipantPort.existsByRoomIdAndMemberId(roomId, memberId)) return;
 
+        ChatRoom room = loadRoomPort.loadById(roomId).orElse(null);
+
         saveRoomParticipantPort.deleteByRoomIdAndMemberId(roomId, memberId);
 
         String nickname = getNickname(memberId);
@@ -107,7 +121,11 @@ public class RoomService implements
 
         broadcastRoomPort.broadcastRoomMessage(roomId, sysMsg);
         broadcastRoomPort.broadcastRoomParticipants(roomId, participants);
-        broadcastRoomList();
+
+        // DIRECT 방 퇴장은 GROUP 방 목록과 무관하므로 브로드캐스트 생략
+        if (room == null || room.getRoomType() == ChatRoom.RoomType.GROUP) {
+            broadcastRoomList();
+        }
 
         log.info("[방 퇴장] roomId={}, memberId={}", roomId, memberId);
     }
@@ -119,9 +137,11 @@ public class RoomService implements
         roomIds.forEach(roomId -> leave(memberId, roomId));
     }
 
+    /** GROUP 방 목록만 반환 */
     @Override
     public List<RoomDto> getRoomList() {
         return loadRoomPort.loadAllActive().stream()
+                .filter(room -> room.getRoomType() == com.shan.chat.domain.room.ChatRoom.RoomType.GROUP)
                 .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(room.getRoomId())))
                 .collect(Collectors.toList());
     }
@@ -145,15 +165,103 @@ public class RoomService implements
 
     @Override
     public void syncRoomList() {
-        List<RoomDto> rooms = loadRoomPort.loadAllActive().stream()
-                .map(room -> toRoomDto(room, loadRoomParticipantPort.countByRoomId(room.getRoomId())))
+        // GROUP 방 목록만 브로드캐스트 — DIRECT 방은 제3자에게 노출하지 않는다
+        broadcastRoomPort.broadcastRoomList(getRoomList());
+    }
+
+    @Override
+    @Transactional
+    public RoomDto startDirectChat(String requesterId, String targetMemberId) {
+        // 기존 1:1 방 조회
+        Optional<ChatRoom> existing = findDirectRoomPort.findDirectRoom(requesterId, targetMemberId);
+        if (existing.isPresent()) {
+            ChatRoom room = existing.get();
+            // 혹시 퇴장 상태면 재입장
+            if (!loadRoomParticipantPort.existsByRoomIdAndMemberId(room.getRoomId(), requesterId)) {
+                saveRoomParticipantPort.save(RoomParticipant.join(room.getRoomId(), requesterId));
+            }
+            List<MemberInfo> participants = loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(room.getRoomId());
+            broadcastRoomPort.broadcastRoomParticipants(room.getRoomId(), participants);
+
+            notifyDirectChatToMembers(requesterId, targetMemberId);
+            return toRoomDto(room, countOnlineParticipants(room.getRoomId()));
+        }
+
+        // 새 1:1 방 생성
+        String roomId = UUID.randomUUID().toString();
+        String requesterNick = getNickname(requesterId);
+        String targetNick    = getNickname(targetMemberId);
+        String roomName      = requesterNick + " ↔ " + targetNick;
+
+        ChatRoom room = ChatRoom.createDirect(roomId, roomName, requesterId);
+        saveRoomPort.save(room);
+
+        saveRoomParticipantPort.save(RoomParticipant.join(roomId, requesterId));
+        saveRoomParticipantPort.save(RoomParticipant.join(roomId, targetMemberId));
+
+        saveRoomMessagePort.save(systemRoomMsg(roomId, "1:1 채팅이 시작되었습니다."));
+
+        notifyDirectChatToMembers(requesterId, targetMemberId);
+
+        log.info("[1:1 방 생성] roomId={}, requester={}, target={}", roomId, requesterId, targetMemberId);
+        return toRoomDto(room, countOnlineParticipants(roomId));
+    }
+
+    /** 두 멤버 모두에게 1:1 대화 목록을 실시간으로 전송한다. */
+    private void notifyDirectChatToMembers(String requesterId, String targetMemberId) {
+        broadcastRoomPort.notifyDirectChatUpdate(requesterId, getMyDirectRooms(requesterId));
+        broadcastRoomPort.notifyDirectChatUpdate(targetMemberId, getMyDirectRooms(targetMemberId));
+    }
+
+    /**
+     * 멤버 접속/퇴장 시 해당 멤버 및 1:1 대화 상대방들의 온라인 수를 실시간 갱신한다.
+     */
+    @Override
+    public void syncDirectPresence(String memberId) {
+        List<ChatRoom> myDirectRooms = findDirectRoomPort.findDirectRoomsByMemberId(memberId);
+        if (myDirectRooms.isEmpty()) return;
+
+        // 본인 사이드바 갱신
+        broadcastRoomPort.notifyDirectChatUpdate(memberId, getMyDirectRooms(memberId));
+
+        // 각 1:1 대화 상대방 사이드바 갱신
+        myDirectRooms.forEach(room ->
+                loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(room.getRoomId()).stream()
+                        .filter(p -> !p.getMemberId().equals(memberId))
+                        .forEach(partner -> broadcastRoomPort.notifyDirectChatUpdate(
+                                partner.getMemberId(), getMyDirectRooms(partner.getMemberId())))
+        );
+    }
+
+    @Override
+    public void syncDirectPresenceForRoom(String roomId) {
+        ChatRoom room = loadRoomPort.loadById(roomId).orElse(null);
+        if (room == null || room.getRoomType() != ChatRoom.RoomType.DIRECT) return;
+
+        // 해당 방 참여자 전원의 사이드바를 새 입장 수로 갱신
+        loadRoomParticipantPort.loadParticipantsWithInfoByRoomId(roomId).forEach(p ->
+                broadcastRoomPort.notifyDirectChatUpdate(p.getMemberId(), getMyDirectRooms(p.getMemberId()))
+        );
+    }
+
+    @Override
+    public List<RoomDto> getMyDirectRooms(String memberId) {
+        return findDirectRoomPort.findDirectRoomsByMemberId(memberId).stream()
+                .map(room -> toRoomDto(room, countOnlineParticipants(room.getRoomId())))
                 .collect(Collectors.toList());
-        broadcastRoomPort.broadcastRoomList(rooms);
     }
 
     // ──────────────────────────────────────────────────────────
     // Private helpers
     // ──────────────────────────────────────────────────────────
+
+    /**
+     * 현재 해당 방 페이지를 열고 있는 멤버 수를 반환한다.
+     * STOMP /topic/room/{roomId} 구독 기준으로 추적된다.
+     */
+    private int countOnlineParticipants(String roomId) {
+        return manageOnlineSessionPort.countMembersInRoom(roomId);
+    }
 
     private void broadcastRoomList() {
         List<RoomDto> rooms = getRoomList();
@@ -173,6 +281,7 @@ public class RoomService implements
                 .creatorId(room.getCreatorId())
                 .participantCount(count)
                 .createdAt(room.getCreatedAt())
+                .roomType(room.getRoomType().name())
                 .build();
     }
 

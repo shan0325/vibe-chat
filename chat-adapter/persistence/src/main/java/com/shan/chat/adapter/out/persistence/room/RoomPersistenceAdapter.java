@@ -7,10 +7,7 @@ import com.shan.chat.adapter.out.persistence.room.entity.RoomParticipantJpaEntit
 import com.shan.chat.adapter.out.persistence.room.repository.ChatRoomJpaRepository;
 import com.shan.chat.adapter.out.persistence.room.repository.RoomParticipantJpaRepository;
 import com.shan.chat.application.member.dto.MemberInfo;
-import com.shan.chat.application.room.port.out.LoadRoomParticipantPort;
-import com.shan.chat.application.room.port.out.LoadRoomPort;
-import com.shan.chat.application.room.port.out.SaveRoomParticipantPort;
-import com.shan.chat.application.room.port.out.SaveRoomPort;
+import com.shan.chat.application.room.port.out.*;
 import com.shan.chat.domain.room.ChatRoom;
 import com.shan.chat.domain.room.RoomParticipant;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +21,7 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
-        LoadRoomParticipantPort, SaveRoomParticipantPort {
+        LoadRoomParticipantPort, SaveRoomParticipantPort, FindDirectRoomPort {
 
     private final ChatRoomJpaRepository chatRoomJpaRepository;
     private final RoomParticipantJpaRepository roomParticipantJpaRepository;
@@ -59,8 +56,24 @@ public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
                                 .creatorId(room.getCreatorId())
                                 .createdAt(room.getCreatedAt())
                                 .active(room.isActive())
+                                .roomType(toEntityType(room.getRoomType()))
                                 .build())
                 );
+    }
+
+    // ── FindDirectRoomPort ────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ChatRoom> findDirectRoom(String member1Id, String member2Id) {
+        return chatRoomJpaRepository.findDirectRoom(member1Id, member2Id).map(this::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChatRoom> findDirectRoomsByMemberId(String memberId) {
+        return chatRoomJpaRepository.findDirectRoomsByMemberId(memberId)
+                .stream().map(this::toDomain).collect(Collectors.toList());
     }
 
     // ── LoadRoomParticipantPort ───────────────────────────────
@@ -87,10 +100,7 @@ public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
     @Override
     @Transactional(readOnly = true)
     public List<MemberInfo> loadParticipantsWithInfoByRoomId(String roomId) {
-        List<RoomParticipantJpaEntity> participants =
-                roomParticipantJpaRepository.findByIdRoomId(roomId);
-
-        return participants.stream()
+        return roomParticipantJpaRepository.findByIdRoomId(roomId).stream()
                 .map(p -> memberJpaRepository.findById(p.getId().getMemberId()))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
@@ -125,8 +135,18 @@ public class RoomPersistenceAdapter implements LoadRoomPort, SaveRoomPort,
     // ── Private helpers ───────────────────────────────────────
 
     private ChatRoom toDomain(ChatRoomJpaEntity e) {
+        ChatRoom.RoomType roomType = e.getRoomType() == ChatRoomJpaEntity.RoomType.DIRECT
+                ? ChatRoom.RoomType.DIRECT
+                : ChatRoom.RoomType.GROUP;
         return ChatRoom.restore(e.getRoomId(), e.getRoomName(), e.getCreatorId(),
-                e.getCreatedAt(), e.isActive());
+                e.getCreatedAt(), e.isActive(), roomType);
+    }
+
+    private ChatRoomJpaEntity.RoomType toEntityType(ChatRoom.RoomType roomType) {
+        return roomType == ChatRoom.RoomType.DIRECT
+                ? ChatRoomJpaEntity.RoomType.DIRECT
+                : ChatRoomJpaEntity.RoomType.GROUP;
     }
 }
+
 
