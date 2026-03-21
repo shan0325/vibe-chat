@@ -10,6 +10,7 @@ import com.shan.chat.application.room.port.in.SearchRoomUseCase;
 import com.shan.chat.application.room.port.out.*;
 import com.shan.chat.application.room.port.out.SearchRoomPort;
 import com.shan.chat.common.exception.ChatException;
+import com.shan.chat.common.exception.RoomNotFoundException;
 import com.shan.chat.domain.room.ChatRoom;
 import com.shan.chat.domain.room.RoomMessage;
 import com.shan.chat.domain.room.RoomParticipant;
@@ -80,7 +81,7 @@ public class RoomService implements
     @Transactional
     public void join(String memberId, String roomId) {
         ChatRoom room = loadRoomPort.loadById(roomId)
-                .orElseThrow(() -> new ChatException("존재하지 않는 방입니다: " + roomId));
+                .orElseThrow(() -> new RoomNotFoundException(roomId));
 
         if (!room.isActive()) throw new ChatException("비활성화된 방입니다: " + roomId);
 

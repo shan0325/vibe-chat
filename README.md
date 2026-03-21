@@ -216,6 +216,6 @@ http://localhost:8080
 | Phase 2 | 메인 페이지 / 전체 채팅 | ✅ 완료 |
 | Phase 3 | 방 생성 / 방 목록 / 1:N 채팅 | ✅ 완료 |
 | Phase 4 | 1:1 채팅 | ✅ 완료 |
-| Phase 5 | 영속화 / Querydsl 고도화 | 🔜 예정 |
-| Phase 6 | 안정화 / 테스트 / 운영 준비 | 🔜 예정 |
+| Phase 5 | 영속화 / Querydsl 고도화 | ✅ 완료 |
+| Phase 6 | 안정화 / 테스트 / 운영 준비 | ✅ 완료 |
 

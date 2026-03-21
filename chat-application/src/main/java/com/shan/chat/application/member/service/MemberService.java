@@ -6,7 +6,7 @@ import com.shan.chat.application.member.port.in.CreateMemberUseCase;
 import com.shan.chat.application.member.port.in.FindMemberUseCase;
 import com.shan.chat.application.member.port.out.LoadMemberPort;
 import com.shan.chat.application.member.port.out.SaveMemberPort;
-import com.shan.chat.common.exception.ChatException;
+import com.shan.chat.common.exception.MemberNotFoundException;
 import com.shan.chat.common.util.NicknameGenerator;
 import com.shan.chat.domain.member.MemberProfile;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class MemberService implements CreateMemberUseCase, ChangeNicknameUseCase
     @Transactional
     public MemberInfo change(String memberId, String newNickname) {
         MemberProfile member = loadMemberPort.loadByMemberId(memberId)
-                .orElseThrow(() -> new ChatException("사용자를 찾을 수 없습니다: " + memberId));
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
         member.changeNickname(newNickname);
         saveMemberPort.save(member);
         return toDto(member);

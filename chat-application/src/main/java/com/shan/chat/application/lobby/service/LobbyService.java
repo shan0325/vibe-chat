@@ -7,7 +7,7 @@ import com.shan.chat.application.lobby.port.out.BroadcastLobbyPort;
 import com.shan.chat.application.lobby.port.out.LoadLobbyHistoryPort;
 import com.shan.chat.application.lobby.port.out.SaveLobbyMessagePort;
 import com.shan.chat.application.member.port.out.ManageOnlineSessionPort;
-import com.shan.chat.common.exception.ChatException;
+import com.shan.chat.common.exception.SessionNotFoundException;
 import com.shan.chat.domain.message.ChatMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ public class LobbyService implements SendLobbyMessageUseCase, GetLobbyHistoryUse
     @Transactional
     public void send(String sessionId, String content) {
         var sender = manageOnlineSessionPort.getMemberBySessionId(sessionId)
-                .orElseThrow(() -> new ChatException("세션을 찾을 수 없습니다: " + sessionId));
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
         LocalDateTime now = LocalDateTime.now();
 

@@ -452,7 +452,7 @@ com.shan.chat.adapter.out.persistence
 
 ---
 
-## Phase 5. 영속화 / 조회 고도화
+## Phase 5. 영속화 / 조회 고도화 ✅ 완료
 
 ### 목표
 - 메시지/방/참여 이력을 DB에 저장한다.
@@ -473,7 +473,7 @@ com.shan.chat.adapter.out.persistence
 
 ---
 
-## Phase 6. 안정화 / 테스트 / 운영 준비
+## Phase 6. 안정화 / 테스트 / 운영 준비 ✅ 완료
 
 ### 목표
 - 기능 안정화와 테스트 자동화를 진행한다.
