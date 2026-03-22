@@ -2,21 +2,13 @@ spring:
   application:
     name: chat
 
-  # =====================
-  # H2 In-Memory Database
-  # =====================
-  datasource:
-    url: jdbc:h2:mem:chatdb;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+  profiles:
+    default: local
 
   # =====================
-  # JPA / Hibernate
+  # JPA / Hibernate (공통)
   # =====================
   jpa:
-    hibernate:
-      ddl-auto: create-drop
     show-sql: true
     properties:
       hibernate:
@@ -24,7 +16,7 @@ spring:
         use_sql_comments: true
 
   # =====================
-  # H2 Console (개발 편의)
+  # H2 Console
   # =====================
   h2:
     console:
