@@ -10,5 +10,8 @@ dependencies {
     implementation project(':chat-adapter:persistence')
 
     implementation 'org.springframework.boot:spring-boot-starter'
+
+    // 통합 테스트에서 @Transactional 사용
+    testImplementation 'org.springframework:spring-tx'
 }
 
